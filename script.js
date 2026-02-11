@@ -23,7 +23,8 @@ const chessNotation = {
 }
 
 class Piece {
-    constructor(y='a', x=1) {
+    constructor(color, x=1, y='a') {
+        this.color = color
         this.coordinates = [x,y]
         this.numberPos = x
         this.letterPos = y
@@ -51,42 +52,96 @@ class Piece {
 }
 
 class King extends Piece {
-    constructor() {
-        super()
+    constructor(color, x, y) {
+        super(color, x, y)
     }
 }
 
 class Queen extends Piece {
-    constructor() {
-        super()
+    constructor(color, x, y) {
+        super(color, x, y)
     }
 }
 
 class Bishop extends Piece {
-    constructor() {
-        super()
+    constructor(color, x, y) {
+        super(color, x, y)
     }
 }
 
 class Knight extends Piece {
-    constructor() {
-        super()
+    constructor(color, x, y) {
+        super(color, x, y)
     }
 }
 
 class Rook extends Piece {
-    constructor() {
-        super()
+    constructor(color, x, y) {
+        super(color, x, y)
     }
 }
 
 class Pawn extends Piece {
-    constructor() {
-        super()
+    constructor(color, x, y) {
+        super(color, x, y)
     }
 }
 
+class Board {
+    constructor() {
+        this.board = [
+            ["","","","","","","",""],
+            ["","","","","","","",""],
+            ["","","","","","","",""],
+            ["","","","","","","",""],
+            ["","","","","","","",""],
+            ["","","","","","","",""],
+            ["","","","","","","",""],
+            ["","","","","","","",""],
+        ]
+
+        this.positions = [
+            ["a8","b8","c8","d8","e8","f8","g8","h8"],
+            ["a7","b7","c7","d7","e7","f7","g7","h7"],
+            ["a6","b6","c6","d6","e6","f6","g6","h6"],
+            ["a5","b5","c5","d5","e5","f5","g5","h5"],
+            ["a4","b4","c4","d4","e4","f4","g4","h4"],
+            ["a3","b3","c3","d3","e3","f3","g3","h3"],
+            ["a2","b2","c2","d2","e2","f2","g2","h2"],
+            ["a1","b1","c1","d1","e1","f1","g1","h1"],
+        ]
+    }
+
+    init() {
+        this.board = [
+            [new Rook("black"),new Knight("black"),new Bishop("black"),new Queen("black"),new King("black"),new Bishop("black"),new Knight("black"),new Rook("black")],
+            [new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black")],
+            ["","","","","","","",""],
+            ["","","","","","","",""],
+            ["","","","","","","",""],
+            ["","","","","","","",""],
+            [new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white")],
+            [new Rook("white"),new Knight("white"),new Bishop("white"),new Queen("white"),new King("white"),new Bishop("white"),new Knight("white"),new Rook("white")],
+        ]
+
+
+        for (let rowIndex in this.board) {
+
+            let rowItems = this.board[rowIndex]
+
+            for (let itemIndex in rowItems) {
+                let item = rowItems[itemIndex]
+                if (item != "") {
+                    item.coordinates = [ this.positions[rowIndex][itemIndex][0], this.positions[rowIndex][itemIndex][1] ]
+                }
+            }
+        }
+    }
+}
 
 const draw = ()=> {
     //to implement
 }
+
+const board = new Board
+board.init()
