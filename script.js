@@ -1,5 +1,11 @@
 const canvas = document.querySelector('canvas')
 const ctx = canvas.getContext('2d')
+canvas.width = 800
+canvas.height = 800
+
+const BLACK_SQUARE_COLOR = "#000"
+const WHITE_SQUARE_COLOR = "#FFF"
+const SQUARE_SIZE = 75;
 
 const chessNotation = {
     king: 'K',
@@ -137,11 +143,24 @@ class Board {
             }
         }
     }
+
+    draw() {
+        for (let c=0; c<8; c++) {
+            for (let r=0; r<8; r++) {
+                ctx.fillStyle = (r + c) % 2 === 0
+                ? WHITE_SQUARE_COLOR
+                : BLACK_SQUARE_COLOR;
+                ctx.fillRect(75*r, 75*c, SQUARE_SIZE, SQUARE_SIZE)
+            }
+        }
+    }
 }
 
 const draw = ()=> {
-    //to implement
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    board.draw()
 }
 
+requestAnimationFrame(draw)
 const board = new Board
 board.init()
