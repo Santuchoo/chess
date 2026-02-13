@@ -3,8 +3,8 @@ const ctx = canvas.getContext('2d')
 canvas.width = 800
 canvas.height = 800
 
-const BLACK_SQUARE_COLOR = "#000"
-const WHITE_SQUARE_COLOR = "#FFF"
+const BLACK_SQUARE_COLOR = "#cfb998"
+const WHITE_SQUARE_COLOR = "#fdfff0"
 const SQUARE_SIZE = 75;
 
 const chessNotation = {
@@ -116,6 +116,8 @@ class Board {
             ["a2","b2","c2","d2","e2","f2","g2","h2"],
             ["a1","b1","c1","d1","e1","f1","g1","h1"],
         ]
+
+        this.init()
     }
 
     init() {
@@ -142,25 +144,66 @@ class Board {
                 }
             }
         }
+    }    
+}
+
+class Renderer {
+    constructor(ctx) {
+        this.ctx = ctx
+        this.images = {}
+        this.loadImages()
     }
 
-    draw() {
+    drawBoard() {
         for (let c=0; c<8; c++) {
             for (let r=0; r<8; r++) {
                 ctx.fillStyle = (r + c) % 2 === 0
                 ? WHITE_SQUARE_COLOR
                 : BLACK_SQUARE_COLOR;
-                ctx.fillRect(75*r, 75*c, SQUARE_SIZE, SQUARE_SIZE)
+                ctx.fillRect(r*SQUARE_SIZE, c*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
+            }
+        }
+    }
+
+    loadImages() {
+        const pieces = ["pawn", "rook", "knight", "bishop", "queen", "king"]
+        const colors = ["white", "black"]
+
+        for (let color of colors) {
+            for (let piece of pieces) {
+                const img = new Image()
+                const key = `${color}-${piece}`
+                img.src = `pieces/${key}.png`
+                this.images[key] = img
+            }
+        }
+    }
+
+    drawPieces(board) {
+        for (let r=0; r<8; r++) {
+            for (let c=0; c<8; c++) {
+                const piece = board.board[r][c]
+                if (!piece) continue
+
+                const key = `${piece.color}-${piece.constructor.name.toLowerCase()}`
+                const img = this.images[key]
+
+                if (img) {
+                    this.ctx.drawImage(img, c*SQUARE_SIZE, r*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
+                }
             }
         }
     }
 }
 
+const board = new Board
+const renderer = new Renderer(ctx)
+
 const draw = ()=> {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    board.draw()
+    renderer.drawBoard()
+    renderer.drawPieces(board)
+    requestAnimationFrame(draw)
 }
 
-requestAnimationFrame(draw)
-const board = new Board
-board.init()
+draw()
