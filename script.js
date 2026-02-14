@@ -1,11 +1,12 @@
 const canvas = document.querySelector('canvas')
 const ctx = canvas.getContext('2d')
-canvas.width = 800
-canvas.height = 800
 
 const BLACK_SQUARE_COLOR = "#cfb998"
 const WHITE_SQUARE_COLOR = "#fdfff0"
-const SQUARE_SIZE = 75;
+const SQUARE_SIZE = 100;
+
+canvas.width = SQUARE_SIZE*8
+canvas.height = SQUARE_SIZE*8
 
 const chessNotation = {
     king: 'K',
@@ -34,6 +35,7 @@ class Piece {
         this.coordinates = [x,y]
         this.numberPos = x
         this.letterPos = y
+        this.background = null
     }
     
     isMoveLegal(move) {
@@ -46,9 +48,20 @@ class Piece {
     }
     
     move(position, accuracy) {
-        const pieceMove = `${chessNotation[this.constructor.name.toLowerCase()]}${position}${chessNotation[accuracy.toLowerCase()]}`
+        let pieceMove
+        try {
+            pieceMove = `${chessNotation[this.constructor.name.toLowerCase()]}${position}${chessNotation[accuracy.toLowerCase()]}`
+        } catch {
+            if (!accuracy) {
+                pieceMove = `${chessNotation[this.constructor.name.toLowerCase()]}${position}`
+            }
+        }
         if (this.isMoveLegal(pieceMove)) {
+            if (this instanceof Pawn) {
+                this.canDoubleStep = false
+            }
             console.log(pieceMove);
+            game.movesLog.push(pieceMove)
         }
     }
 
@@ -58,52 +71,52 @@ class Piece {
 }
 
 class King extends Piece {
-    constructor(color, x, y) {
-        super(color, x, y)
+    constructor(color, x, y, background) {
+        super(color, x, y, background)
     }
 }
 
 class Queen extends Piece {
-    constructor(color, x, y) {
-        super(color, x, y)
+    constructor(color, x, y, background) {
+        super(color, x, y, background)
     }
 }
 
 class Bishop extends Piece {
-    constructor(color, x, y) {
-        super(color, x, y)
+    constructor(color, x, y, background) {
+        super(color, x, y, background)
     }
 }
 
 class Knight extends Piece {
-    constructor(color, x, y) {
-        super(color, x, y)
+    constructor(color, x, y, background) {
+        super(color, x, y, background)
     }
 }
 
 class Rook extends Piece {
-    constructor(color, x, y) {
-        super(color, x, y)
+    constructor(color, x, y, background) {
+        super(color, x, y, background)
     }
 }
 
 class Pawn extends Piece {
-    constructor(color, x, y) {
-        super(color, x, y)
+    constructor(color, x, y, background) {
+        super(color, x, y, background)
+        this.canDoubleStep = true
     }
 }
 
 class Board {
     constructor() {
         this.board = [
-            ["","","","","","","",""],
-            ["","","","","","","",""],
-            ["","","","","","","",""],
-            ["","","","","","","",""],
-            ["","","","","","","",""],
-            ["","","","","","","",""],
-            ["","","","","","","",""],
-            ["","","","","","","",""],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
         ]
 
         this.positions = [
@@ -124,10 +137,10 @@ class Board {
         this.board = [
             [new Rook("black"),new Knight("black"),new Bishop("black"),new Queen("black"),new King("black"),new Bishop("black"),new Knight("black"),new Rook("black")],
             [new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black")],
-            ["","","","","","","",""],
-            ["","","","","","","",""],
-            ["","","","","","","",""],
-            ["","","","","","","",""],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
             [new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white")],
             [new Rook("white"),new Knight("white"),new Bishop("white"),new Queen("white"),new King("white"),new Bishop("white"),new Knight("white"),new Rook("white")],
         ]
@@ -139,7 +152,7 @@ class Board {
 
             for (let itemIndex in rowItems) {
                 let item = rowItems[itemIndex]
-                if (item != "") {
+                if (item != null) {
                     item.coordinates = [ this.positions[rowIndex][itemIndex][0], this.positions[rowIndex][itemIndex][1] ]
                 }
             }
@@ -189,6 +202,10 @@ class Renderer {
                 const img = this.images[key]
 
                 if (img) {
+                    if (piece.background != null) {
+                        this.ctx.fillStyle = piece.background
+                        this.ctx.fillRect(c*SQUARE_SIZE, r*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
+                    }
                     this.ctx.drawImage(img, c*SQUARE_SIZE, r*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
                 }
             }
@@ -196,8 +213,58 @@ class Renderer {
     }
 }
 
+class Game {
+    constructor(canvas, board, renderer) {
+        this.canvas = canvas
+        this.board = board
+        this.renderer = renderer
+        this.movesLog = []
+        this.selectedPieceLog = []
+        this.selectedPiece = null
+
+        this.initInput()
+    }
+
+    initInput() {
+        this.canvas.addEventListener("click", (event) => {
+            const rect = this.canvas.getBoundingClientRect()
+
+            const x = event.clientX - rect.left
+            const y = event.clientY - rect.top
+
+            const col = Math.floor(x / SQUARE_SIZE)
+            const row = Math.floor(y / SQUARE_SIZE)
+
+            this.handleClick(row, col)
+        })
+    }
+
+    handleClick(row, col) {
+        const piece = this.board.board[row][col]
+
+        if (piece) {
+            const previousPiece = this.selectedPieceLog.at(-1)
+            // seleccionar
+            this.selectedPiece = piece
+            this.selectedPieceLog.push(piece)
+            console.log(`Selected piece: ${piece.color} ${piece.constructor.name} at ${piece.coordinates.join("")}`)
+            
+            if (previousPiece) {
+                previousPiece.background = null
+            }
+            piece.background = "#f00"
+        } else if (this.selectedPiece && piece == null) {
+            // intentar mover
+            this.selectedPiece.move(`${board.positions[row][col][0]}${board.positions[row][col][1]}`)
+            this.selectedPiece.background = null
+            this.selectedPiece = null
+        }
+    }
+}
+
 const board = new Board
 const renderer = new Renderer(ctx)
+const game = new Game(canvas, board, renderer)
 
 const draw = ()=> {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
