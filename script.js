@@ -9,12 +9,18 @@ canvas.width = SQUARE_SIZE*8
 canvas.height = SQUARE_SIZE*8
 
 const chessNotation = {
-    king: 'K',
-    queen: 'Q',
-    bishop: 'B',
-    knight: 'N',
-    rook: 'R',
-    pawn: 'P',
+    whiteking: 'K',
+    whitequeen: 'Q',
+    whitebishop: 'B',
+    whiteknight: 'N',
+    whiterook: 'R',
+    whitepawn: 'P',
+    blackking: 'k',
+    blackqueen: 'q',
+    blackbishop: 'b',
+    blackknight: 'n',
+    blackrook: 'r',
+    blackpawn: 'p',
     shortCastle: 'O-O',
     longCastle: 'O-O-O',
     check: '+',
@@ -30,11 +36,9 @@ const chessNotation = {
 }
 
 class Piece {
-    constructor(color, x=1, y='a') {
+    constructor(color, x=1, y=0) {
         this.color = color
         this.coordinates = [x,y]
-        this.numberPos = x
-        this.letterPos = y
         this.background = null
     }
     
@@ -47,26 +51,17 @@ class Piece {
         }
     }
     
-    move(position, accuracy) {
-        let pieceMove
-        try {
-            pieceMove = `${chessNotation[this.constructor.name.toLowerCase()]}${position}${chessNotation[accuracy.toLowerCase()]}`
-        } catch {
-            if (!accuracy) {
-                pieceMove = `${chessNotation[this.constructor.name.toLowerCase()]}${position}`
+    move(move, accuracy=null) {
+        if (!accuracy) {
+            if (this.isMoveLegal(move)) {
+                console.log(move);
+                game.movesLog.push(move)
             }
-        }
-        if (this.isMoveLegal(pieceMove)) {
-            if (this instanceof Pawn) {
-                this.canDoubleStep = false
-            }
-            console.log(pieceMove);
-            game.movesLog.push(pieceMove)
-        }
+        }        
     }
 
     capture(position, pieceCaptured, accuracy) {
-        console.log(`${this.constructor.name[0]}x${position}${chessNotation[accuracy.toLowerCase()]}`);
+        console.log(`${this.constructor.name[0]}x${position}${Utilities.toChessNotation(accuracy.toLowerCase())}`);
     }
 }
 
@@ -119,17 +114,6 @@ class Board {
             [null,null,null,null,null,null,null,null],
         ]
 
-        this.positions = [
-            ["a8","b8","c8","d8","e8","f8","g8","h8"],
-            ["a7","b7","c7","d7","e7","f7","g7","h7"],
-            ["a6","b6","c6","d6","e6","f6","g6","h6"],
-            ["a5","b5","c5","d5","e5","f5","g5","h5"],
-            ["a4","b4","c4","d4","e4","f4","g4","h4"],
-            ["a3","b3","c3","d3","e3","f3","g3","h3"],
-            ["a2","b2","c2","d2","e2","f2","g2","h2"],
-            ["a1","b1","c1","d1","e1","f1","g1","h1"],
-        ]
-
         this.init()
     }
 
@@ -153,7 +137,7 @@ class Board {
             for (let itemIndex in rowItems) {
                 let item = rowItems[itemIndex]
                 if (item != null) {
-                    item.coordinates = [ this.positions[rowIndex][itemIndex][0], this.positions[rowIndex][itemIndex][1] ]
+                    item.coordinates = [rowIndex, itemIndex]
                 }
             }
         }
@@ -241,26 +225,50 @@ class Game {
 
     handleClick(row, col) {
         const piece = this.board.board[row][col]
-
+        let pieceKey;
         if (piece) {
             const previousPiece = this.selectedPieceLog.at(-1)
             // seleccionar
             this.selectedPiece = piece
             this.selectedPieceLog.push(piece)
-            console.log(`Selected piece: ${piece.color} ${piece.constructor.name} at ${piece.coordinates.join("")}`)
+            pieceKey = this.selectedPiece.color + this.selectedPiece.constructor.name.toLowerCase()
+            console.log(["S", Utilities.toChessNotation(pieceKey), piece.coordinates])
             
             if (previousPiece) {
                 previousPiece.background = null
             }
-            piece.background = "#f00"
+            piece.background = "#0003"
         } else if (this.selectedPiece && piece == null) {
             // intentar mover
-            this.selectedPiece.move(`${board.positions[row][col][0]}${board.positions[row][col][1]}`)
+            pieceKey = this.selectedPiece.color + this.selectedPiece.constructor.name.toLowerCase()
+            this.selectedPiece.move(["M", Utilities.toChessNotation(pieceKey), [row, col]])
             this.selectedPiece.background = null
             this.selectedPiece = null
         }
     }
 }
+
+class Utilities {
+    static toChessCoords([x, y]) {
+        //TOP LEFT BASED
+        const letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        return letters[x] + (8 - y);
+    }
+
+    static toArrayCoords(notation) {
+        const col = notation.charCodeAt(0) - 97; // 'a' es 97 en ASCII
+        const row = 8 - parseInt(notation[1]);
+        return [row, col];
+    }
+
+    static toChessNotation(expression) {
+        if (chessNotation[expression] !== undefined) {
+            return chessNotation[expression]
+        }
+        return null
+    }
+}
+
 
 const board = new Board
 const renderer = new Renderer(ctx)
