@@ -36,19 +36,15 @@ const chessNotation = {
 }
 
 class Piece {
-    constructor(color, x=1, y=0) {
+    constructor(color, x=0, y=0, board) {
         this.color = color
         this.coordinates = [x,y]
         this.background = null
+        this.board = board
     }
     
-    isMoveLegal(move) {
-        if (move) { 
-            //if move is legal, return true
-            return true
-        } else {
-            return false
-        }
+    isMoveLegal(board, to) {
+        return false
     }
     
     move(move, accuracy=null) {
@@ -57,7 +53,7 @@ class Piece {
                 console.log(move);
                 game.movesLog.push(move)
             }
-        }        
+        }
     }
 
     capture(position, pieceCaptured, accuracy) {
@@ -66,39 +62,79 @@ class Piece {
 }
 
 class King extends Piece {
-    constructor(color, x, y, background) {
-        super(color, x, y, background)
+    constructor(color, x, y, board, background) {
+        super(color, x, y, board, background)
     }
 }
 
 class Queen extends Piece {
-    constructor(color, x, y, background) {
-        super(color, x, y, background)
+    constructor(color, x, y, board, background) {
+        super(color, x, y, board, background)
     }
 }
 
 class Bishop extends Piece {
-    constructor(color, x, y, background) {
-        super(color, x, y, background)
+    constructor(color, x, y, board, background) {
+        super(color, x, y, board, background)
     }
 }
 
 class Knight extends Piece {
-    constructor(color, x, y, background) {
-        super(color, x, y, background)
+    constructor(color, x, y, board, background) {
+        super(color, x, y, board, background)
     }
 }
 
 class Rook extends Piece {
-    constructor(color, x, y, background) {
-        super(color, x, y, background)
+    constructor(color, x, y, board, background) {
+        super(color, x, y, board, background)
     }
 }
 
 class Pawn extends Piece {
-    constructor(color, x, y, background) {
-        super(color, x, y, background)
+    constructor(color, x, y, board, background) {
+        super(color, x, y, board, background)
         this.canDoubleStep = true
+        this.color == "white" 
+            ? this.dir = -1
+            : this.dir = 1
+        this.moves = 0
+    }
+    
+    isMoveLegal(board, [toRow, toCol]) {
+        const [fromRow, fromCol] = this.coordinates
+
+        //1 step
+        if (
+            toCol === fromCol &&
+            toRow - fromRow === this.dir &&
+            board[toRow][toCol] == null
+        ) {
+            return true
+        }
+
+        //2 steps
+        if (this.canDoubleStep == true) {
+            if (
+                toCol === fromCol &&
+                toRow - fromRow === this.dir*2 &&
+                board[toRow][toCol] == null &&
+                board[toRow - 1][toCol] == null
+            ) {
+                return true
+            }
+        }
+
+        //Capture diagonally
+        if (
+            (toCol - fromCol === -1 || toCol - fromCol === 1) &&
+            toRow - fromRow == this.dir &&
+            board[toRow][toCol] instanceof Piece
+        ) {
+            return true
+        }
+
+        return false
     }
 }
 
@@ -130,18 +166,32 @@ class Board {
         ]
 
 
-        for (let rowIndex in this.board) {
-
-            let rowItems = this.board[rowIndex]
-
-            for (let itemIndex in rowItems) {
-                let item = rowItems[itemIndex]
-                if (item != null) {
-                    item.coordinates = [rowIndex, itemIndex]
-                }
+        for (let row = 0; row < this.board.length; row++) {
+            for (let col = 0; col < this.board[row].length; col++) {
+                const item = this.board[row][col]
+                if (item) item.coordinates = [row, col]
             }
         }
-    }    
+    }
+
+    deletePiece([x,y]) {
+        this.board[x][y] = null
+    }
+
+    setPiece([x,y], piece) {
+        this.board[x][y] = piece
+    }
+
+    movePiece([moveOrSelection, piece, [x,y]]) {
+        if (moveOrSelection === "M") {
+            this.deletePiece(piece.coordinates)
+            this.setPiece([x,y],piece)
+            piece.coordinates = [x,y]
+            if (piece instanceof Pawn) {
+                piece.canDoubleStep = false
+            }
+        }
+    }
 }
 
 class Renderer {
@@ -205,6 +255,7 @@ class Game {
         this.movesLog = []
         this.selectedPieceLog = []
         this.selectedPiece = null
+        this.turn = "w"
 
         this.initInput()
     }
@@ -224,27 +275,43 @@ class Game {
     }
 
     handleClick(row, col) {
-        const piece = this.board.board[row][col]
-        let pieceKey;
-        if (piece) {
-            const previousPiece = this.selectedPieceLog.at(-1)
-            // seleccionar
-            this.selectedPiece = piece
-            this.selectedPieceLog.push(piece)
-            pieceKey = this.selectedPiece.color + this.selectedPiece.constructor.name.toLowerCase()
-            console.log(["S", Utilities.toChessNotation(pieceKey), piece.coordinates])
-            
-            if (previousPiece) {
-                previousPiece.background = null
+        const target = this.board.board[row][col]
+
+        // 1. No hay pieza seleccionada
+        if (!this.selectedPiece) {
+            if (target && target.color[0] === this.turn) {
+                this.selectedPiece = target
+                target.background = "#0003"
             }
-            piece.background = "#0003"
-        } else if (this.selectedPiece && piece == null) {
-            // intentar mover
-            pieceKey = this.selectedPiece.color + this.selectedPiece.constructor.name.toLowerCase()
-            this.selectedPiece.move(["M", Utilities.toChessNotation(pieceKey), [row, col]])
-            this.selectedPiece.background = null
-            this.selectedPiece = null
+            return
         }
+
+        // 2. Hay pieza seleccionada
+        const piece = this.selectedPiece
+
+        // click en pieza propia → cambiar selección
+        if (target && target.color === piece.color) {
+            piece.background = null
+            this.selectedPiece = target
+            target.background = "#0003"
+            return
+        }
+
+        // click en enemigo → captura
+        if (target && target.color !== piece.color && piece.isMoveLegal(this.board.board ,[row, col])) {
+            this.board.movePiece(["M", piece, [row, col]])
+            piece.coordinates = [row, col]
+            this.turn = this.turn === "w" ? "b" : "w"
+        }
+
+        // click en vacío → mover
+        else if (!target && piece.isMoveLegal(this.board.board ,[row, col])) {
+            this.turn = this.turn === "w" ? "b" : "w"
+            this.board.movePiece(["M", piece, [row, col]])
+        }
+
+        piece.background = null
+        this.selectedPiece = null
     }
 }
 
