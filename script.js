@@ -77,6 +77,32 @@ class Bishop extends Piece {
     constructor(color, x, y, board, background) {
         super(color, x, y, board, background)
     }
+
+    isMoveLegal(board, [toRow, toCol]) {
+        const [fromRow, fromCol] = this.coordinates
+
+        const dRow = toRow - fromRow
+        const dCol = toCol - fromCol
+
+        // Must be diagonal
+        if (Math.abs(dRow) !== Math.abs(dCol)) return false
+
+        const stepRow = Math.sign(dRow)
+        const stepCol = Math.sign(dCol)
+
+        //Checking if the path is empty (not including starting position && final position)
+        for (let i=1; i < Math.abs(dRow); i++) {
+            const r = fromRow + stepRow * i
+            const c = fromCol + stepCol * i
+            if (board[r][c] instanceof Piece) {
+                return false
+            }
+        }
+
+        //Checking if the target isn't the same color (capture) or is empty (move)
+        const target = board[toRow][toCol]
+        return (!target || target.color !== this.color)
+    }
 }
 
 class Knight extends Piece {
@@ -119,7 +145,7 @@ class Pawn extends Piece {
                 toCol === fromCol &&
                 toRow - fromRow === this.dir*2 &&
                 board[toRow][toCol] == null &&
-                board[toRow - 1][toCol] == null
+                board[toRow - this.dir][toCol] == null
             ) {
                 return true
             }
@@ -305,7 +331,7 @@ class Game {
         }
 
         // click en vacío → mover
-        else if (!target && piece.isMoveLegal(this.board.board ,[row, col])) {
+        else if (!target && piece.isMoveLegal(this.board.board, [row, col])) {
             this.turn = this.turn === "w" ? "b" : "w"
             this.board.movePiece(["M", piece, [row, col]])
         }
