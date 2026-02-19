@@ -78,31 +78,25 @@ class Queen extends Piece {
         const dRow = toRow - fromRow
         const dCol = toCol - fromCol
 
+        // must be straight line
+        if (dRow !== 0 && dCol !== 0) return false
+
         const stepRow = Math.sign(dRow)
         const stepCol = Math.sign(dCol)
 
-        if (dRow === 0) {
-            //Same row
-            //Col changes
-            for (let i=1; i < Math.abs(dCol); i++) {
-                const c = fromCol + stepCol * i
-                if (board[fromRow][c] instanceof Piece) {
-                    return false
-                }
-            }
-            return true
-        } else if (dCol === 0) {
-            //Same col
-            //Row changes
-            for (let i=1; i < Math.abs(dRow); i++) {
-                const r = fromRow + stepRow * i
-                if (board[r][fromCol] instanceof Piece) {
-                    return false
-                }
-            }
-            return true
+        let r = fromRow + stepRow
+        let c = fromCol + stepCol
+
+        // check path (exclude destination)
+        while (r !== toRow || c !== toCol) {
+            if (board[r][c] instanceof Piece) return false
+            r += stepRow
+            c += stepCol
         }
-        return false
+
+        // check destination color
+        const target = board[toRow][toCol]
+        return !target || target.color !== this.color
     }
     
     bishopMovement(board, [toRow, toCol]) {
@@ -185,31 +179,25 @@ class Rook extends Piece {
         const dRow = toRow - fromRow
         const dCol = toCol - fromCol
 
+        // must be straight line
+        if (dRow !== 0 && dCol !== 0) return false
+
         const stepRow = Math.sign(dRow)
         const stepCol = Math.sign(dCol)
 
-        if (dRow === 0) {
-            //Same row
-            //Col changes
-            for (let i=1; i < Math.abs(dCol); i++) {
-                const c = fromCol + stepCol * i
-                if (board[fromRow][c] instanceof Piece) {
-                    return false
-                }
-            }
-            return true
-        } else if (dCol === 0) {
-            //Same col
-            //Row changes
-            for (let i=1; i < Math.abs(dRow); i++) {
-                const r = fromRow + stepRow * i
-                if (board[r][fromCol] instanceof Piece) {
-                    return false
-                }
-            }
-            return true
+        let r = fromRow + stepRow
+        let c = fromCol + stepCol
+
+        // check path (exclude destination)
+        while (r !== toRow || c !== toCol) {
+            if (board[r][c] instanceof Piece) return false
+            r += stepRow
+            c += stepCol
         }
-        return false
+
+        // check destination color
+        const target = board[toRow][toCol]
+        return !target || target.color !== this.color
     }
 }
 
@@ -263,20 +251,6 @@ class Pawn extends Piece {
 class Board {
     constructor() {
         this.board = [
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-        ]
-
-        this.init()
-    }
-
-    init() {
-        this.board = [
             [new Rook("black"),new Knight("black"),new Bishop("black"),new Queen("black"),new King("black"),new Bishop("black"),new Knight("black"),new Rook("black")],
             [new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black")],
             [null,null,null,null,null,null,null,null],
@@ -286,7 +260,6 @@ class Board {
             [new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white")],
             [new Rook("white"),new Knight("white"),new Bishop("white"),new Queen("white"),new King("white"),new Bishop("white"),new Knight("white"),new Rook("white")],
         ]
-
 
         for (let row = 0; row < this.board.length; row++) {
             for (let col = 0; col < this.board[row].length; col++) {
