@@ -71,6 +71,69 @@ class Queen extends Piece {
     constructor(color, x, y, board, background) {
         super(color, x, y, board, background)
     }
+
+    rookMovement(board, [toRow, toCol]) {
+        const [fromRow, fromCol] = this.coordinates
+
+        const dRow = toRow - fromRow
+        const dCol = toCol - fromCol
+
+        const stepRow = Math.sign(dRow)
+        const stepCol = Math.sign(dCol)
+
+        if (dRow === 0) {
+            //Same row
+            //Col changes
+            for (let i=1; i < Math.abs(dCol); i++) {
+                const c = fromCol + stepCol * i
+                if (board[fromRow][c] instanceof Piece) {
+                    return false
+                }
+            }
+            return true
+        } else if (dCol === 0) {
+            //Same col
+            //Row changes
+            for (let i=1; i < Math.abs(dRow); i++) {
+                const r = fromRow + stepRow * i
+                if (board[r][fromCol] instanceof Piece) {
+                    return false
+                }
+            }
+            return true
+        }
+        return false
+    }
+    
+    bishopMovement(board, [toRow, toCol]) {
+        const [fromRow, fromCol] = this.coordinates
+
+        const dRow = toRow - fromRow
+        const dCol = toCol - fromCol
+
+        // Must be diagonal
+        if (Math.abs(dRow) !== Math.abs(dCol)) return false
+
+        const stepRow = Math.sign(dRow)
+        const stepCol = Math.sign(dCol)
+
+        //Checking if the path is empty (not including starting position && final position)
+        for (let i=1; i < Math.abs(dRow); i++) {
+            const r = fromRow + stepRow * i
+            const c = fromCol + stepCol * i
+            if (board[r][c] instanceof Piece) {
+                return false
+            }
+        }
+
+        //Checking if the target isn't the same color (capture) or is empty (move)
+        const target = board[toRow][toCol]
+        return (!target || target.color !== this.color)
+    }
+
+    isMoveLegal(board, [toRow, toCol]) {
+        return (this.rookMovement(board, [toRow, toCol]) || this.bishopMovement(board, [toRow, toCol]))
+    }
 }
 
 class Bishop extends Piece {
@@ -114,6 +177,39 @@ class Knight extends Piece {
 class Rook extends Piece {
     constructor(color, x, y, board, background) {
         super(color, x, y, board, background)
+    }
+
+    isMoveLegal(board, [toRow, toCol]) {
+        const [fromRow, fromCol] = this.coordinates
+
+        const dRow = toRow - fromRow
+        const dCol = toCol - fromCol
+
+        const stepRow = Math.sign(dRow)
+        const stepCol = Math.sign(dCol)
+
+        if (dRow === 0) {
+            //Same row
+            //Col changes
+            for (let i=1; i < Math.abs(dCol); i++) {
+                const c = fromCol + stepCol * i
+                if (board[fromRow][c] instanceof Piece) {
+                    return false
+                }
+            }
+            return true
+        } else if (dCol === 0) {
+            //Same col
+            //Row changes
+            for (let i=1; i < Math.abs(dRow); i++) {
+                const r = fromRow + stepRow * i
+                if (board[r][fromCol] instanceof Piece) {
+                    return false
+                }
+            }
+            return true
+        }
+        return false
     }
 }
 
