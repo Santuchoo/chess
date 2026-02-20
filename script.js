@@ -166,6 +166,19 @@ class Knight extends Piece {
     constructor(color, x, y, board, background) {
         super(color, x, y, board, background)
     }
+
+    isMoveLegal(board, [toRow, toCol]) {
+        const [fromRow, fromCol] = this.coordinates
+
+        const dRow = toRow - fromRow
+        const dCol = toCol - fromCol
+
+        if ((Math.abs(dRow) === 1 && Math.abs(dCol) === 2) || (Math.abs(dRow) === 2 && Math.abs(dCol) === 1)) {
+            const target = board[toRow][toCol]
+            return (!target || target.color !== this.color)
+        }
+        return false
+    }
 }
 
 class Rook extends Piece {
