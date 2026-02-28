@@ -623,6 +623,7 @@ class Game {
 
         piece.background = null
         this.selectedPiece = null
+        console.log(Utilities.toFenNotation(this.board))
     }
 }
 
@@ -645,6 +646,31 @@ class Utilities {
         }
         return null
     }
+
+    static toFenNotation(board) {
+        let counter;
+        let fenstring = "";
+        for (let r = 0; r < 8; r++) {
+            counter = 0;
+            for (let c = 0; c < 8; c++) {
+                const piece = board.board[r][c];
+                if (piece instanceof Piece) {
+                    if (counter > 0) {
+                        fenstring += counter;
+                        counter = 0;
+                    }
+                    fenstring += Utilities.toChessNotation(`${piece.color}${piece.constructor.name.toLowerCase()}`);
+                } else {
+                    counter++;
+                }
+            }
+            if (counter > 0) {
+                fenstring += counter;
+            }
+            if (r < 7) fenstring += "/";
+        }
+        return fenstring
+}
 }
 
 
