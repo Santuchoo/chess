@@ -46,24 +46,200 @@ class Piece {
     isMoveLegal(board, to) {
         return false
     }
-    
-    move(move, accuracy=null) {
-        if (!accuracy) {
-            if (this.isMoveLegal(move)) {
-                console.log(move);
-                game.movesLog.push(move)
-            }
-        }
-    }
-
-    capture(position, pieceCaptured, accuracy) {
-        console.log(`${this.constructor.name[0]}x${position}${Utilities.toChessNotation(accuracy.toLowerCase())}`);
-    }
 }
 
 class King extends Piece {
     constructor(color, x, y, board, background) {
         super(color, x, y, board, background)
+    }
+
+    findKing(board, color) {
+        for (let r=0; r<8; r++) {
+            for (let c=0; c<8; c++) {
+                const piece = board.board[r][c]
+                if (piece &&
+                    piece instanceof King &&
+                    piece.color === color
+                ) {
+                    return piece.coordinates
+                }
+            }
+        }
+        return null //it shouldn't return null if the position is valid
+    }
+
+    isSquareAttacked(board, row, col, attackerColor) {
+        const directions = {
+            verticalMovement: [[1,0], //Positive x (right)
+                                [-1,0], //Negative x (left)
+                                [0,1], //Positive y (down)
+                                [0,-1]], //Negative y (up)
+            
+            diagonalMovement: [[1,-1],
+                                [-1,1],
+                                [1,1], 
+                                [-1,-1]],
+            
+            knightMovement: [
+                            [2,1], [2,-1], [-2,1], [-2,-1],
+                            [1,2], [1,-2], [-1,2], [-1,-2]
+                        ],
+            
+            kingMovement: [
+                [-1,-1], [-1,0], [-1,1],
+                [0,-1],          [0,1],
+                [1,-1],  [1,0],  [1,1]
+            ]
+        }
+
+        //rook & queen
+        for (const [dRow, dCol] of directions["verticalMovement"]) {
+            let r = row + dRow
+            let c = col + dCol
+
+            while (board.inBounds(r, c)) {
+                const piece = board.board[r][c]
+
+                if (piece) {
+                    if (
+                        piece.color === attackerColor &&
+                        (piece instanceof Rook || piece instanceof Queen)
+                    ) return true
+
+                    break
+                }
+                r += dRow
+                c += dCol
+            }
+        }
+
+        //bishop & queen
+        for (const [dRow, dCol] of directions["diagonalMovement"]) {
+            let r = row + dRow
+            let c = col + dCol
+
+            while (board.inBounds(r, c)) {
+                const piece = board.board[r][c]
+
+                if (piece) {
+                    if (
+                        piece.color === attackerColor &&
+                        (piece instanceof Bishop || piece instanceof Queen)
+                    ) return true
+
+                    break
+                }
+
+                r += dRow
+                c += dCol
+            }
+        }
+
+        //knight
+        for (const [dRow, dCol] of directions["knightMovement"]) {
+            const r = row + dRow
+            const c = col + dCol
+
+            if (!board.inBounds(r, c)) continue
+
+            const piece = board.board[r][c]
+
+            if (
+                piece &&
+                piece.color === attackerColor &&
+                piece instanceof Knight
+            ) {
+                return true
+            }
+        }
+
+        //pawn
+        const pawnDir = attackerColor === "white" ? -1 : 1
+        const pawnMovement = [
+            [pawnDir, -1],
+            [pawnDir, 1]
+        ]
+
+        for (const [dRow, dCol] of pawnMovement) {
+            const r = row + dRow
+            const c = col + dCol
+
+            if (!board.inBounds(r, c)) continue
+
+            const piece = board.board[r][c]
+            if (
+                piece &&
+                piece.color === attackerColor &&
+                piece instanceof Pawn
+            ) {
+                return true
+            }
+        }
+
+        //king
+        for (const [dRow, dCol] of directions["kingMovement"]) {
+            const r = row + dRow
+            const c = col + dCol
+
+            if (!board.inBounds(r,c)) continue
+
+            const piece = board.board[r][c]
+
+            if (
+                piece &&
+                piece.color === attackerColor &&
+                piece instanceof King
+            ) {
+                return true
+            }
+        }
+        return false
+    }
+
+    isInCheck(board, color) {
+        let attackerColor;
+
+        color === 'white'
+            ? attackerColor = 'black'
+            : attackerColor = 'white'
+        
+        const kingPos = this.findKing(board, color)
+        if (!kingPos) {
+            console.error('King not found')
+            return null
+        }
+        return this.isSquareAttacked(board, kingPos[0], kingPos[1], attackerColor)
+    }
+
+    isMoveLegal(board, [toRow, toCol]) {
+        const [fromRow, fromCol] = this.coordinates
+
+        const dRow = Math.abs(toRow - fromRow)
+        const dCol = Math.abs(toCol - fromCol)
+
+        // the move must be 1 square
+        if (dRow > 1 || dCol > 1) return false
+
+        const target = board.board[toRow][toCol]
+        // can't capture his own piece
+        if (target && target.color === this.color) return false
+
+        // simulate the move
+        const originalFrom = board.board[fromRow][fromCol]
+        const originalTo = board.board[toRow][toCol]
+
+        board.board[fromRow][fromCol] = null
+        board.board[toRow][toCol] = this
+        this.coordinates = [toRow, toCol]
+
+        const isInCheck = this.isInCheck(board, this.color)
+
+        // undo move
+        board.board[fromRow][fromCol] = originalFrom
+        board.board[toRow][toCol] = originalTo
+        this.coordinates = [fromRow, fromCol]
+
+        return !isInCheck
     }
 }
 
@@ -89,13 +265,13 @@ class Queen extends Piece {
 
         // check path (exclude destination)
         while (r !== toRow || c !== toCol) {
-            if (board[r][c] instanceof Piece) return false
+            if (board.board[r][c] instanceof Piece) return false
             r += stepRow
             c += stepCol
         }
 
         // check destination color
-        const target = board[toRow][toCol]
+        const target = board.board[toRow][toCol]
         return !target || target.color !== this.color
     }
     
@@ -115,13 +291,13 @@ class Queen extends Piece {
         for (let i=1; i < Math.abs(dRow); i++) {
             const r = fromRow + stepRow * i
             const c = fromCol + stepCol * i
-            if (board[r][c] instanceof Piece) {
+            if (board.board[r][c] instanceof Piece) {
                 return false
             }
         }
 
         //Checking if the target isn't the same color (capture) or is empty (move)
-        const target = board[toRow][toCol]
+        const target = board.board[toRow][toCol]
         return (!target || target.color !== this.color)
     }
 
@@ -151,13 +327,13 @@ class Bishop extends Piece {
         for (let i=1; i < Math.abs(dRow); i++) {
             const r = fromRow + stepRow * i
             const c = fromCol + stepCol * i
-            if (board[r][c] instanceof Piece) {
+            if (board.board[r][c] instanceof Piece) {
                 return false
             }
         }
 
         //Checking if the target isn't the same color (capture) or is empty (move)
-        const target = board[toRow][toCol]
+        const target = board.board[toRow][toCol]
         return (!target || target.color !== this.color)
     }
 }
@@ -174,7 +350,7 @@ class Knight extends Piece {
         const dCol = toCol - fromCol
 
         if ((Math.abs(dRow) === 1 && Math.abs(dCol) === 2) || (Math.abs(dRow) === 2 && Math.abs(dCol) === 1)) {
-            const target = board[toRow][toCol]
+            const target = board.board[toRow][toCol]
             return (!target || target.color !== this.color)
         }
         return false
@@ -192,7 +368,7 @@ class Rook extends Piece {
         const dRow = toRow - fromRow
         const dCol = toCol - fromCol
 
-        // must be straight line
+        // must be a straight line
         if (dRow !== 0 && dCol !== 0) return false
 
         const stepRow = Math.sign(dRow)
@@ -203,13 +379,13 @@ class Rook extends Piece {
 
         // check path (exclude destination)
         while (r !== toRow || c !== toCol) {
-            if (board[r][c] instanceof Piece) return false
+            if (board.board[r][c] instanceof Piece) return false
             r += stepRow
             c += stepCol
         }
 
         // check destination color
-        const target = board[toRow][toCol]
+        const target = board.board[toRow][toCol]
         return !target || target.color !== this.color
     }
 }
@@ -218,9 +394,7 @@ class Pawn extends Piece {
     constructor(color, x, y, board, background) {
         super(color, x, y, board, background)
         this.canDoubleStep = true
-        this.color == "white" 
-            ? this.dir = -1
-            : this.dir = 1
+        this.dir = this.color === "white" ? -1 : 1
         this.moves = 0
     }
     
@@ -231,7 +405,7 @@ class Pawn extends Piece {
         if (
             toCol === fromCol &&
             toRow - fromRow === this.dir &&
-            board[toRow][toCol] == null
+            board.board[toRow][toCol] == null
         ) {
             return true
         }
@@ -241,8 +415,8 @@ class Pawn extends Piece {
             if (
                 toCol === fromCol &&
                 toRow - fromRow === this.dir*2 &&
-                board[toRow][toCol] == null &&
-                board[toRow - this.dir][toCol] == null
+                board.board[toRow][toCol] == null &&
+                board.board[toRow - this.dir][toCol] == null
             ) {
                 return true
             }
@@ -252,7 +426,7 @@ class Pawn extends Piece {
         if (
             (toCol - fromCol === -1 || toCol - fromCol === 1) &&
             toRow - fromRow == this.dir &&
-            board[toRow][toCol] instanceof Piece
+            board.board[toRow][toCol] instanceof Piece
         ) {
             return true
         }
@@ -290,15 +464,17 @@ class Board {
         this.board[x][y] = piece
     }
 
-    movePiece([moveOrSelection, piece, [x,y]]) {
-        if (moveOrSelection === "M") {
-            this.deletePiece(piece.coordinates)
-            this.setPiece([x,y],piece)
-            piece.coordinates = [x,y]
-            if (piece instanceof Pawn) {
-                piece.canDoubleStep = false
-            }
+    movePiece([type, piece, [x,y]]) {
+        this.deletePiece(piece.coordinates)
+        this.setPiece([x,y],piece)
+        piece.coordinates = [x,y]
+        if (piece instanceof Pawn) {
+            piece.canDoubleStep = false
         }
+    }
+
+    inBounds(r, c) {
+        return r >= 0 && r < 8 && c >= 0 && c < 8
     }
 }
 
@@ -382,10 +558,30 @@ class Game {
         })
     }
 
+    simulateMove(piece, color, [toRow, toCol]) {
+        const [fromRow, fromCol] = piece.coordinates
+        const target = this.board.board[toRow][toCol]
+
+        // simulate
+        this.board.board[fromRow][fromCol] = null
+        this.board.board[toRow][toCol] = piece
+        piece.coordinates = [toRow, toCol]
+
+        const kingChecker = new King(color)
+        const inCheck = kingChecker.isInCheck(this.board, color)
+
+        // undo
+        this.board.board[fromRow][fromCol] = piece
+        this.board.board[toRow][toCol] = target
+        piece.coordinates = [fromRow, fromCol]
+
+        return !inCheck
+    }
+
     handleClick(row, col) {
         const target = this.board.board[row][col]
 
-        // 1. No hay pieza seleccionada
+        // no piece is selected
         if (!this.selectedPiece) {
             if (target && target.color[0] === this.turn) {
                 this.selectedPiece = target
@@ -394,10 +590,10 @@ class Game {
             return
         }
 
-        // 2. Hay pieza seleccionada
+        // a piece is selected
         const piece = this.selectedPiece
 
-        // click en pieza propia → cambiar selección
+        // click on self piece -> change selection
         if (target && target.color === piece.color) {
             piece.background = null
             this.selectedPiece = target
@@ -405,17 +601,24 @@ class Game {
             return
         }
 
-        // click en enemigo → captura
-        if (target && target.color !== piece.color && piece.isMoveLegal(this.board.board ,[row, col])) {
-            this.board.movePiece(["M", piece, [row, col]])
-            piece.coordinates = [row, col]
+        // click on enemy's piece -> capture
+        if (target && piece.isMoveLegal(this.board, [row, col]) &&
+            this.simulateMove(piece, piece.color, [row, col])) {
+
+            this.board.movePiece(["C", piece, [row, col]])
+            this.movesLog.push(["C", piece, [row, col]])
+
             this.turn = this.turn === "w" ? "b" : "w"
         }
 
-        // click en vacío → mover
-        else if (!target && piece.isMoveLegal(this.board.board, [row, col])) {
-            this.turn = this.turn === "w" ? "b" : "w"
+        // click on an empty space -> move
+        else if (!target && piece.isMoveLegal(this.board, [row, col]) &&
+            this.simulateMove(piece, piece.color, [row, col])) {
+
             this.board.movePiece(["M", piece, [row, col]])
+            this.movesLog.push(["M", piece, [row, col]])
+
+            this.turn = this.turn === "w" ? "b" : "w"
         }
 
         piece.background = null
