@@ -436,24 +436,47 @@ class Pawn extends Piece {
 }
 
 class Board {
-    constructor() {
-        this.board = [
-            [new Rook("black"),new Knight("black"),new Bishop("black"),new Queen("black"),new King("black"),new Bishop("black"),new Knight("black"),new Rook("black")],
-            [new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black"),new Pawn("black")],
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-            [new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white"),new Pawn("white")],
-            [new Rook("white"),new Knight("white"),new Bishop("white"),new Queen("white"),new King("white"),new Bishop("white"),new Knight("white"),new Rook("white")],
-        ]
+    constructor(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
+        this.fen = fen
+        this.board = []
 
-        for (let row = 0; row < this.board.length; row++) {
-            for (let col = 0; col < this.board[row].length; col++) {
-                const item = this.board[row][col]
-                if (item) item.coordinates = [row, col]
+        let row = []
+        const boardFen = this.fen.split(" ")[0]
+
+        for (let charIndex = 0; charIndex < boardFen.length; charIndex++) {
+            let char = boardFen[charIndex]
+
+            if (char === "/") {
+                this.board.push(row)
+                row = []
+                continue
+            }
+
+            if (Utilities.isDigit(char)) {
+                for (let i=0; i<parseInt(char); i++) {
+                    row.push(null)
+                }
+            }
+
+            if (!Utilities.isDigit(char)) {
+                const color = char === char.toUpperCase() ? "white" : "black"
+
+                const pieceMap = {
+                    r: Rook,
+                    n: Knight,
+                    b: Bishop,
+                    q: Queen,
+                    k: King,
+                    p: Pawn
+                }
+
+                const PieceClass = pieceMap[char.toLowerCase()]
+                const piece = new PieceClass(color)
+                piece.coordinates = [this.board.length, row.length]
+                row.push(piece)
             }
         }
+        this.board.push(row)
     }
 
     deletePiece([x,y]) {
@@ -670,11 +693,15 @@ class Utilities {
             if (r < 7) fenstring += "/";
         }
         return fenstring
-}
+    }
+
+    static isDigit(char) {
+        return /^\d$/.test(char);
+    }
 }
 
 
-const board = new Board
+const board = new Board()
 const renderer = new Renderer(ctx)
 const game = new Game(canvas, board, renderer)
 
