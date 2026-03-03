@@ -1,6 +1,16 @@
 const canvas = document.querySelector('canvas')
 const ctx = canvas.getContext('2d')
 
+const audios = {
+    capture: new Audio("audio/capture.mp3"),
+    move: new Audio("audio/move.mp3"),
+    check: new Audio("audio/check.mp3"),
+    castle: new Audio("audio/castle.mp3"),
+    promote: new Audio("audio/promote.mp3"),
+    gameEnd: new Audio("audio/game-end.webp"),
+}
+
+
 const BLACK_SQUARE_COLOR = "#cfb998"
 const WHITE_SQUARE_COLOR = "#fdfff0"
 const SQUARE_SIZE = 100;
@@ -51,6 +61,7 @@ class Piece {
 class King extends Piece {
     constructor(color, x, y, board, background) {
         super(color, x, y, board, background)
+        this.hasMoved = false
     }
 
     findKing(board, color) {
@@ -89,7 +100,7 @@ class King extends Piece {
                 [-1,-1], [-1,0], [-1,1],
                 [0,-1],          [0,1],
                 [1,-1],  [1,0],  [1,1]
-            ]
+            ],
         }
 
         //rook & queen
@@ -208,10 +219,12 @@ class King extends Piece {
             console.error('King not found')
             return null
         }
-        return this.isSquareAttacked(board, kingPos[0], kingPos[1], attackerColor)
+        if (this.isSquareAttacked(board, kingPos[0], kingPos[1], attackerColor)) {
+            return true
+        }
     }
 
-    isMoveLegal(board, [toRow, toCol]) {
+    kingMove(board, [toRow, toCol]) {
         const [fromRow, fromCol] = this.coordinates
 
         const dRow = Math.abs(toRow - fromRow)
@@ -239,7 +252,45 @@ class King extends Piece {
         board.board[toRow][toCol] = originalTo
         this.coordinates = [fromRow, fromCol]
 
+        if(!isInCheck) this.hasMoved = true
         return !isInCheck
+    }
+    
+    castle(board, [toRow, toCol]) {
+        const [fromRow, fromCol] = this.coordinates
+
+        const dRow = toRow - fromRow
+        const dCol = toCol - fromCol
+
+        const attackerColor = this.color === "white" ? "black" : "white"
+        const kingSide = this.color === "white" ? "K" : "k"
+        const queenSide = this.color === "white" ? "Q" : "q"
+
+        if ([[0, -2], [0, 2]].includes([dRow, dCol]) &&
+            board.fen.split(" ")[2].includes(kingSide) || board.fen.split(" ")[2].includes(queenSide)
+        ) {
+            if (!this.isSquareAttacked(board, toRow, toCol, attackerColor) &&
+            !this.isSquareAttacked(board, toRow-1, toCol-1, attackerColor) &&
+            !this.hasMoved &&
+            !this.isInCheck(board, this.color)) {
+                //King side castle
+                if (board.board[toRow][toCol+1] &&
+                board.board[toRow][toCol+1].hasMoved === false) {
+                    board.movePiece(["M", board.board[toRow][toCol+1], [toRow, toCol-1]])
+                    audios.castle.play()
+                    return true
+                }
+            }
+            
+        
+        }
+    }
+
+    isMoveLegal(board, [toRow, toCol]) {
+        if (this.kingMove(board, [toRow, toCol]) || 
+            this.castle(board, [toRow, toCol])) {
+                return true
+            }
     }
 }
 
@@ -360,6 +411,7 @@ class Knight extends Piece {
 class Rook extends Piece {
     constructor(color, x, y, board, background) {
         super(color, x, y, board, background)
+        this.hasMoved = false
     }
 
     isMoveLegal(board, [toRow, toCol]) {
@@ -386,6 +438,7 @@ class Rook extends Piece {
 
         // check destination color
         const target = board.board[toRow][toCol]
+        if (!target || target.color !== this.color) this.hasMoved = true
         return !target || target.color !== this.color
     }
 }
@@ -407,6 +460,7 @@ class Pawn extends Piece {
             toRow - fromRow === this.dir &&
             board.board[toRow][toCol] == null
         ) {
+            this.canDoubleStep = false
             return true
         }
 
@@ -418,6 +472,7 @@ class Pawn extends Piece {
                 board.board[toRow][toCol] == null &&
                 board.board[toRow - this.dir][toCol] == null
             ) {
+                this.canDoubleStep = false
                 return true
             }
         }
@@ -428,9 +483,10 @@ class Pawn extends Piece {
             toRow - fromRow == this.dir &&
             board.board[toRow][toCol] instanceof Piece
         ) {
+            this.canDoubleStep = false
             return true
         }
-
+        
         return false
     }
 }
@@ -491,9 +547,6 @@ class Board {
         this.deletePiece(piece.coordinates)
         this.setPiece([x,y],piece)
         piece.coordinates = [x,y]
-        if (piece instanceof Pawn) {
-            piece.canDoubleStep = false
-        }
     }
 
     inBounds(r, c) {
@@ -562,7 +615,7 @@ class Game {
         this.movesLog = []
         this.selectedPieceLog = []
         this.selectedPiece = null
-        this.turn = "w"
+        this.turn = board.fen.split(" ")[1]
 
         this.initInput()
     }
@@ -597,7 +650,6 @@ class Game {
         this.board.board[fromRow][fromCol] = piece
         this.board.board[toRow][toCol] = target
         piece.coordinates = [fromRow, fromCol]
-
         return !inCheck
     }
 
@@ -625,22 +677,26 @@ class Game {
         }
 
         // click on enemy's piece -> capture
-        if (target && piece.isMoveLegal(this.board, [row, col]) &&
-            this.simulateMove(piece, piece.color, [row, col])) {
-
+        if (target && piece.isMoveLegal(this.board, [row, col])) {
+            if (!this.simulateMove(piece, piece.color, [row, col])) {
+                audios.check.play() // FIX
+                return
+            }
             this.board.movePiece(["C", piece, [row, col]])
             this.movesLog.push(["C", piece, [row, col]])
-
+            audios.capture.play()
             this.turn = this.turn === "w" ? "b" : "w"
         }
 
         // click on an empty space -> move
-        else if (!target && piece.isMoveLegal(this.board, [row, col]) &&
-            this.simulateMove(piece, piece.color, [row, col])) {
-
+        else if (!target && piece.isMoveLegal(this.board, [row, col])) {
+            if (!this.simulateMove(piece, piece.color, [row, col])) {
+                audios.check.play() // FIX
+                return
+            }
             this.board.movePiece(["M", piece, [row, col]])
             this.movesLog.push(["M", piece, [row, col]])
-
+            audios.move.play()
             this.turn = this.turn === "w" ? "b" : "w"
         }
 
