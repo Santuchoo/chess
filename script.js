@@ -266,7 +266,7 @@ class King extends Piece {
         const kingSide = this.color === "white" ? "K" : "k"
         const queenSide = this.color === "white" ? "Q" : "q"
 
-        if ([[0, -2], [0, 2]].includes([dRow, dCol]) &&
+        if (dRow === 0 && (dCol === 2 || dCol === -2) &&
             board.fen.split(" ")[2].includes(kingSide) || board.fen.split(" ")[2].includes(queenSide)
         ) {
             if (!this.isSquareAttacked(board, toRow, toCol, attackerColor) &&
@@ -274,9 +274,17 @@ class King extends Piece {
             !this.hasMoved &&
             !this.isInCheck(board, this.color)) {
                 //King side castle
-                if (board.board[toRow][toCol+1] &&
+                if (board.board[toRow][toCol+1] instanceof Rook &&
                 board.board[toRow][toCol+1].hasMoved === false) {
                     board.movePiece(["M", board.board[toRow][toCol+1], [toRow, toCol-1]])
+                    audios.castle.play()
+                    return true
+                }
+
+                //Queen side castle
+                if (board.board[toRow][toCol-2] instanceof Rook &&
+                board.board[toRow][toCol-2].hasMoved === false) {
+                    board.movePiece(["M", board.board[toRow][toCol-2], [toRow, toCol+1]])
                     audios.castle.play()
                     return true
                 }
