@@ -267,15 +267,17 @@ class King extends Piece {
         const queenSide = this.color === "white" ? "Q" : "q"
 
         if (dRow === 0 && (dCol === 2 || dCol === -2) &&
-            board.fen.split(" ")[2].includes(kingSide) || board.fen.split(" ")[2].includes(queenSide)
+            (board.fen.split(" ")[2].includes(kingSide) || board.fen.split(" ")[2].includes(queenSide))
         ) {
             if (!this.isSquareAttacked(board, toRow, toCol, attackerColor) &&
-            !this.isSquareAttacked(board, toRow-1, toCol-1, attackerColor) &&
+            board.board[toRow][toCol] === null &&
             !this.hasMoved &&
             !this.isInCheck(board, this.color)) {
                 //King side castle
                 if (board.board[toRow][toCol+1] instanceof Rook &&
-                board.board[toRow][toCol+1].hasMoved === false) {
+                board.board[toRow][toCol+1].hasMoved === false &&
+                board.board[toRow][toCol-1] === null &&
+                !this.isSquareAttacked(board, toRow, toCol-1, attackerColor)) {
                     board.movePiece(["M", board.board[toRow][toCol+1], [toRow, toCol-1]])
                     audios.castle.play()
                     return true
@@ -283,7 +285,9 @@ class King extends Piece {
 
                 //Queen side castle
                 if (board.board[toRow][toCol-2] instanceof Rook &&
-                board.board[toRow][toCol-2].hasMoved === false) {
+                board.board[toRow][toCol-2].hasMoved === false &&
+                board.board[toRow][toCol+1] === null &&
+                !this.isSquareAttacked(board, toRow, toCol+1, attackerColor)) {
                     board.movePiece(["M", board.board[toRow][toCol-2], [toRow, toCol+1]])
                     audios.castle.play()
                     return true
@@ -675,7 +679,7 @@ class Game {
 
         // a piece is selected
         const piece = this.selectedPiece
-
+        const enemyColor = piece.color === "white" ? "black" : "white" 
         // click on self piece -> change selection
         if (target && target.color === piece.color) {
             piece.background = null
@@ -687,24 +691,38 @@ class Game {
         // click on enemy's piece -> capture
         if (target && piece.isMoveLegal(this.board, [row, col])) {
             if (!this.simulateMove(piece, piece.color, [row, col])) {
-                audios.check.play() // FIX
+                piece.background = null
+                this.selectedPiece = null
                 return
             }
             this.board.movePiece(["C", piece, [row, col]])
             this.movesLog.push(["C", piece, [row, col]])
-            audios.capture.play()
+            const kingChecker = new King(piece.color)
+            const inCheck = kingChecker.isInCheck(this.board, enemyColor)
+            if (inCheck) {
+                audios.check.play()
+            } else {
+                audios.capture.play()
+            }
             this.turn = this.turn === "w" ? "b" : "w"
         }
 
         // click on an empty space -> move
         else if (!target && piece.isMoveLegal(this.board, [row, col])) {
             if (!this.simulateMove(piece, piece.color, [row, col])) {
-                audios.check.play() // FIX
+                piece.background = null
+                this.selectedPiece = null
                 return
             }
             this.board.movePiece(["M", piece, [row, col]])
             this.movesLog.push(["M", piece, [row, col]])
-            audios.move.play()
+            const kingChecker = new King(piece.color)
+            const inCheck = kingChecker.isInCheck(this.board, enemyColor)
+            if (inCheck) {
+                audios.check.play()
+            } else {
+                audios.move.play()
+            }
             this.turn = this.turn === "w" ? "b" : "w"
         }
 
