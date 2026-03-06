@@ -7,7 +7,7 @@ const audios = {
     check: new Audio("audio/check.mp3"),
     castle: new Audio("audio/castle.mp3"),
     promote: new Audio("audio/promote.mp3"),
-    gameEnd: new Audio("audio/game-end.webp"),
+    gameEnd: new Audio("audio/game-end.webm"),
 }
 
 
@@ -695,8 +695,8 @@ class Game {
                 this.selectedPiece = null
                 return
             }
+            const previousPosition = piece.coordinates
             this.board.movePiece(["C", piece, [row, col]])
-            this.movesLog.push(["C", piece, [row, col]])
             const kingChecker = new King(piece.color)
             const inCheck = kingChecker.isInCheck(this.board, enemyColor)
             if (inCheck) {
@@ -704,6 +704,7 @@ class Game {
             } else {
                 audios.capture.play()
             }
+            this.movesLog.push(["C", piece, [row, col], previousPosition, inCheck])
             this.turn = this.turn === "w" ? "b" : "w"
         }
 
@@ -714,8 +715,8 @@ class Game {
                 this.selectedPiece = null
                 return
             }
+            const previousPosition = piece.coordinates
             this.board.movePiece(["M", piece, [row, col]])
-            this.movesLog.push(["M", piece, [row, col]])
             const kingChecker = new King(piece.color)
             const inCheck = kingChecker.isInCheck(this.board, enemyColor)
             if (inCheck) {
@@ -723,12 +724,14 @@ class Game {
             } else {
                 audios.move.play()
             }
+            this.movesLog.push(["M", piece, [row, col], previousPosition, inCheck])
             this.turn = this.turn === "w" ? "b" : "w"
         }
 
         piece.background = null
         this.selectedPiece = null
         console.log(Utilities.toFenNotation(this.board))
+        console.log(Utilities.parsePgn(this.movesLog))
     }
 }
 
@@ -736,7 +739,7 @@ class Utilities {
     static toChessCoords([x, y]) {
         //TOP LEFT BASED
         const letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-        return letters[x] + (8 - y);
+        return letters[y] + (8 - x);
     }
 
     static toArrayCoords(notation) {
@@ -777,11 +780,45 @@ class Utilities {
         return fenstring
     }
 
+    static parsePgn(movesLog) {
+        // NEED TO IMPLEMENT 2 MOVEMENTS AVAILABLE CLARITY AND CHECKMATE
+        let counter = 0;
+        let pgn = "";
+        let extra = "";
+
+        for (let moveIndex in movesLog) {
+            if (moveIndex % 2 === 0) {
+                counter++
+                pgn += `${counter}.`
+            }
+            const type = movesLog[moveIndex][0] === "M" ? "" : "x"
+            let piece = movesLog[moveIndex][1].color === "white" ? movesLog[moveIndex][1].constructor.name[0].toUpperCase() : movesLog[moveIndex][1].constructor.name[0].toLowerCase()
+            const lastPosition = Utilities.toChessCoords(movesLog[moveIndex][3])
+            const currentPosition = Utilities.toChessCoords(movesLog[moveIndex][2])
+            const kingInCheck = movesLog[moveIndex][4]
+
+            if (piece.toLowerCase() === "p") {
+                piece = ""
+                if (type === "x") {
+                    piece = lastPosition[0]
+                }
+            }
+            
+            if (kingInCheck) {
+                extra = "+"
+            }
+            
+            const currentMove = `${piece}${type}${currentPosition}${extra}`
+            pgn += currentMove + " "
+            extra = ""
+        }
+        return pgn
+    }
+
     static isDigit(char) {
         return /^\d$/.test(char);
     }
 }
-
 
 const board = new Board()
 const renderer = new Renderer(ctx)
