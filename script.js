@@ -1,5 +1,6 @@
 const canvas = document.querySelector('canvas')
 const ctx = canvas.getContext('2d')
+const body = document.querySelector('body')
 
 const audios = {
     capture: new Audio("audio/capture.mp3"),
@@ -462,7 +463,51 @@ class Pawn extends Piece {
         this.dir = this.color === "white" ? -1 : 1
         this.moves = 0
     }
-    
+
+    promotionMenu(board) {
+        const pieceMap = {
+            queen: Queen,
+            rook: Rook,
+            bishop: Bishop,
+            knight: Knight
+        }
+
+        console.log("promotion color:", this.color)
+
+        const container = document.createElement('div')
+
+        const imgs = {
+            queen: "pieces/" + this.color + "-queen.png",
+            rook: "pieces/" + this.color + "-rook.png",
+            bishop: "pieces/" + this.color + "-bishop.png",
+            knight: "pieces/" + this.color + "-knight.png",
+        }
+
+        container.classList.add('promotion-menu-container')
+
+        for (let i in imgs) {
+            const img = document.createElement('img')
+            img.src = imgs[i]
+
+            img.addEventListener("click", () => {
+            const PieceClass = pieceMap[i]
+            const newPiece = new PieceClass(this.color)
+
+            this.promotion(board, newPiece)
+            body.removeChild(container)
+        })
+            container.appendChild(img)
+        }
+
+        document.body.appendChild(container)
+    }
+
+    promotion(board, piece=new Queen(this.color)) {
+        piece.coordinates = this.coordinates
+        board.board[this.coordinates[0]][this.coordinates[1]] = piece
+        audios.promote.play()
+    }
+
     isMoveLegal(board, [toRow, toCol]) {
         const [fromRow, fromCol] = this.coordinates
 
@@ -730,6 +775,12 @@ class Game {
 
         piece.background = null
         this.selectedPiece = null
+        if (piece instanceof Pawn) {
+            const lastRow = piece.color === "black" ? 7 : 0
+            if (piece.coordinates[0] === lastRow) {
+                piece.promotionMenu(board)
+            }
+        }
         console.log(Utilities.toFenNotation(this.board))
         console.log(Utilities.parsePgn(this.movesLog))
     }

@@ -17,10 +17,22 @@
 
         body {
             display: flex;
+            flex-direction: column;
             background-color: #222;
             min-height: 100dvh;
             justify-content: center;
             align-items: center;
+        }
+
+        .promotion-menu-container {
+            display: flex;
+            flex-direction: row;
+            width: fit-content;
+            & > img {
+                flex: 1;
+                object-fit: contain;
+                max-height: 100px;
+            }
         }
     </style>
 </body>
