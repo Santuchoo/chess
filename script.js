@@ -530,6 +530,7 @@ class Pawn extends Piece {
                 board.board[toRow - this.dir][toCol] == null
             ) {
                 this.canDoubleStep = false
+                board.changeFen(3, Utilities.toChessCoords([toRow - this.dir, toCol]))
                 return true
             }
         }
@@ -538,12 +539,26 @@ class Pawn extends Piece {
         if (
             (toCol - fromCol === -1 || toCol - fromCol === 1) &&
             toRow - fromRow == this.dir &&
-            board.board[toRow][toCol] instanceof Piece
+            (board.board[toRow][toCol] instanceof Piece)
         ) {
             this.canDoubleStep = false
             return true
         }
-        
+
+        //en passant
+        if (
+            (toCol - fromCol === -1 || toCol - fromCol === 1) &&
+            toRow - fromRow == this.dir &&
+            board.fen.split(' ')[3] === Utilities.toChessCoords([toRow, toCol]) && 
+            board.board[toRow - this.dir][toCol].color !== this.color
+        ) {
+            this.canDoubleStep = false
+            const position = Utilities.toArrayCoords(board.fen.split(' ')[3])
+            position[0] -= this.dir
+            board.deletePiece(position)
+            audios.capture.play()
+            return true
+        }
         return false
     }
 }
@@ -608,6 +623,18 @@ class Board {
 
     inBounds(r, c) {
         return r >= 0 && r < 8 && c >= 0 && c < 8
+    }
+
+    changeFen(part, value) {
+        const splittedFen = this.fen.split(' ')
+        splittedFen[part] = value
+        const fen = splittedFen.join(' ')
+        this.fen = fen
+        console.log(fen)
+    }
+
+    removeEnPassant() {
+        this.changeFen(3, "-")
     }
 }
 
@@ -780,6 +807,8 @@ class Game {
             if (piece.coordinates[0] === lastRow) {
                 piece.promotionMenu(board)
             }
+        } else {
+            this.board.removeEnPassant()
         }
         console.log(Utilities.toFenNotation(this.board))
         console.log(Utilities.parsePgn(this.movesLog))
