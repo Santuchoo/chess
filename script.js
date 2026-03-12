@@ -57,6 +57,26 @@ class Piece {
     isMoveLegal(board, to) {
         return false
     }
+
+    getLegalMoves(board) {
+        const moves = [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [0, 7],
+                        [1, 0], [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7],
+                        [2, 0], [2, 1], [2, 2], [2, 3], [2, 4], [2, 5], [2, 6], [2, 7],
+                        [3, 0], [3, 1], [3, 2], [3, 3], [3, 4], [3, 5], [3, 6], [3, 7],
+                        [4, 0], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [4, 6], [4, 7],
+                        [5, 0], [5, 1], [5, 2], [5, 3], [5, 4], [5, 5], [5, 6], [5, 7],
+                        [6, 0], [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], [6, 6], [6, 7],
+                        [7, 0], [7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6], [7, 7]
+                    ]
+
+        let legalMoves = []
+        for (let [toRow, toCol] of moves) {
+            if (this.isMoveLegal(board, [toRow, toCol])) {
+                legalMoves.push([toRow, toCol])
+            }
+        }
+        return legalMoves
+    }
 }
 
 class King extends Piece {
@@ -166,7 +186,7 @@ class King extends Piece {
         }
 
         //pawn
-        const pawnDir = attackerColor === "white" ? -1 : 1
+        const pawnDir = attackerColor === "white" ? 1 : -1
         const pawnMovement = [
             [pawnDir, -1],
             [pawnDir, 1]
@@ -546,17 +566,17 @@ class Pawn extends Piece {
         }
 
         //en passant
+        const piece = board.board[toRow - this.dir][toCol]
+
         if (
             (toCol - fromCol === -1 || toCol - fromCol === 1) &&
-            toRow - fromRow == this.dir &&
+            toRow - fromRow === this.dir &&
             board.fen.split(' ')[3] === Utilities.toChessCoords([toRow, toCol]) && 
-            board.board[toRow - this.dir][toCol].color !== this.color
+            piece && piece.color !== this.color
         ) {
             this.canDoubleStep = false
             const position = Utilities.toArrayCoords(board.fen.split(' ')[3])
             position[0] -= this.dir
-            board.deletePiece(position)
-            audios.capture.play()
             return true
         }
         return false
@@ -807,9 +827,18 @@ class Game {
             if (piece.coordinates[0] === lastRow) {
                 piece.promotionMenu(board)
             }
+
+            const enPassant = this.board.fen.split(" ")[3]
+
+            if (enPassant === Utilities.toChessCoords([row, col])) {
+                const capturedRow = row - piece.dir
+                this.board.deletePiece([capturedRow, col])
+                audios.capture.play()
+            }
         } else {
             this.board.removeEnPassant()
         }
+        console.log(piece.getLegalMoves(this.board))
         console.log(Utilities.toFenNotation(this.board))
         console.log(Utilities.parsePgn(this.movesLog))
     }
